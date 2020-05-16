@@ -1,0 +1,13 @@
+{
+  "name": "overlay_mixin",
+  "version": "1.0.0",
+  "description": "LitElement Overlay Mixin",
+  "keywords": [
+    "LitElement"
+  ],
+  "author": "evanreid88",
+  "license": "ISC",
+  "dependencies": {
+    "lit-element": "^2.3.1"
+  }
+}
