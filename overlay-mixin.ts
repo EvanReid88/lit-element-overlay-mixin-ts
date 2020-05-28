@@ -3,12 +3,12 @@ import { LitElement } from "lit-element";
 export type Constructor<T> =  new(...args: any[]) => T;
 
 export abstract class OverlayClass extends LitElement {
-    allowedControlIds: string[];
     alwaysOpen: boolean;
     opened: boolean
     
     show?(): void;
     hide?(): void;
+    overlayToIgnore?(...elementIds: string[]): void;
 }
 
 /**
@@ -22,12 +22,6 @@ export const OverlayMixin = <T extends Constructor<LitElement>>(base: T): T & Co
     return class MxOverlay extends base {
 
         /**
-         * List of element ids which prevent overlay hide
-         * if the id exists in click event path
-         */
-        allowedControlIds: string[] = [];
-
-        /**
          * Determines if the overlay closes on outside clicks
          */
         alwaysOpen: boolean = false;
@@ -36,6 +30,12 @@ export const OverlayMixin = <T extends Constructor<LitElement>>(base: T): T & Co
          * Flag for checking if overlay is opened
          */
         opened: boolean = false;
+
+        /**
+         * List of element ids which prevent overlay hide
+         * if the id exists in click event path
+         */
+        private _overlayToIgnore: Set<string> = new Set();
 
         private _preventCloseOutsideClick;
         private _onCaptureHtmlClick;
@@ -71,6 +71,14 @@ export const OverlayMixin = <T extends Constructor<LitElement>>(base: T): T & Co
                 this.handleFeatures(false);
                 this.dispatchEvent(new CustomEvent('overlay-hidden', { bubbles: true, composed: true }));
             }
+        }
+
+        overlayToIgnore(...elementIds: string[]): void {
+            elementIds.forEach(id => {
+                if (id) {
+                    this._overlayToIgnore.add(id);
+                }
+            });
         }
         
         /**
@@ -139,7 +147,7 @@ export const OverlayMixin = <T extends Constructor<LitElement>>(base: T): T & Co
                 // handle on capture phase and schedule the hide if needed
                 this._onCaptureHtmlClick = (e: Event) => {
                     setTimeout(() => {
-                        if (wasClickInside === false && !this.isControlAllowed(this.parentNode, e)) {
+                        if (wasClickInside === false && !this.isElementAllowed(this.parentNode, e)) {
                             this.hide();
                         }
                     });
@@ -165,29 +173,29 @@ export const OverlayMixin = <T extends Constructor<LitElement>>(base: T): T & Co
 
         /**
          * Method which checks if click event path contains elements in 
-         * allowedControlIds, and prevents overlay hide if id exists in event path
-         * isControlContained is called to check if event target is nested in overlay parent
+         * _overlayToIgnore, and prevents overlay hide if id exists in event path
+         * isElementContained is called to check if event target is nested in overlay parent
          * @param parent the parentNode of the overlay
          * @param event overlay click event
          */
-        private isControlAllowed(parent: Node & ParentNode, event: any): boolean {
-            if (this.allowedControlIds?.length > 0) {
-                for (const id of this.allowedControlIds) {
-                    if (event.path.filter(obj => { return obj.id === id }).length > 0) {
+        private isElementAllowed(parent: Node & ParentNode, event: any): boolean {
+            if (this._overlayToIgnore?.size > 0) {
+                for (const element of event.path) {
+                    if (this._overlayToIgnore.has(element.id)) {
                         return true;
                     }
                 }
             }
             
-            return this.isControlContained(parent, event);
-       }
+            return this.isElementContained(parent, event);
+        }
 
        /**
         * Method which checks if the click event target is nested in overlay parent
         * @param parent the parentNode of the overlay
         * @param event overlay click event
         */
-       private isControlContained(parent: Node & ParentNode, event: any) : boolean{
+        private isElementContained(parent: Node & ParentNode, event: any) : boolean{
             var node = event.target?.parentNode;
             while (node != null) {
                 if (node === parent) {
@@ -196,7 +204,7 @@ export const OverlayMixin = <T extends Constructor<LitElement>>(base: T): T & Co
                 node = node.parentNode;
             }
             return false;
-       }
+        }
 
         disconnectedCallback(): void {
             super.disconnectedCallback();
