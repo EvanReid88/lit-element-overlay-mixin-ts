@@ -147,7 +147,7 @@ export const OverlayMixin = <T extends Constructor<LitElement>>(base: T): T & Co
                 // handle on capture phase and schedule the hide if needed
                 this._onCaptureHtmlClick = (e: Event) => {
                     setTimeout(() => {
-                        if (wasClickInside === false && !this.isElementAllowed(this.parentNode, e)) {
+                        if (wasClickInside === false && !this.isElementAllowed(this, e)) {
                             this.hide();
                         }
                     });
@@ -156,6 +156,9 @@ export const OverlayMixin = <T extends Constructor<LitElement>>(base: T): T & Co
 
             this[addOrRemoveListener]('click', this._preventCloseOutsideClick, true);
             document.documentElement[addOrRemoveListener]('click', this._onCaptureHtmlClick, true);
+            
+            this[addOrRemoveListener]('scroll', this._preventCloseOutsideClick, true);
+            document.documentElement[addOrRemoveListener]('scroll', this._onCaptureHtmlClick, true);
         }
 
         /**
@@ -181,7 +184,7 @@ export const OverlayMixin = <T extends Constructor<LitElement>>(base: T): T & Co
         private isElementAllowed(parent: Node & ParentNode, event: any): boolean {
             if (this._overlayToIgnore?.size > 0) {
                 for (const element of event.path) {
-                    if (this._overlayToIgnore.has(element.id)) {
+                    if (element.id && this._overlayToIgnore.has(element.id)) {
                         return true;
                     }
                 }
