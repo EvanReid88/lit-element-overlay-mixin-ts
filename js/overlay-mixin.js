@@ -37,33 +37,14 @@ export const OverlayMixin = (base) => {
          */
         _overlayToIgnore = new Set();
 
-        /**
-         * Flag which represent if the last hold event was fired inside the overlay element
-         */
-        _holdEventInside;
-
         _preventCloseOnOutsideEvent;
-        _onCaptureOverlayClickEvent;
-        _onCaptureOverlayHoldEvent;
-        _onCaptureOverlayScrollEvent;
+        _onCaptureOverlayActionEvent;
         _escKeyHandler;
 
         /**
-         * List of events handled by overlay mixin representing a completed click/tap
+         * List of events handled by overlay mixin
          */
-        _overlayClickEvents;
-
-        /**
-         * List of events which represent user click and hold.
-         * used to determine if the starting location of a click-and-drag / tap-and-drag
-         * is inside the overlay element
-         */
-        _overlayHoldEvents;
-
-        /**
-         * List of scroll-related events handled by overlay mixin
-         */
-        _overlayScrollEvents;
+        _overlayActionEvents;
 
         _overlayMinZIndex = 1000; 
         _initialZIndex;
@@ -73,19 +54,11 @@ export const OverlayMixin = (base) => {
         constructor(...any) {
             super(...any);
 
-            this._overlayClickEvents = [
-                'mouseup',
-                'touchend'
-            ];
-
-            this._overlayHoldEvents = [
+            this._overlayActionEvents = [
                 'mousedown',
-                'touchstart'
-            ];
-
-            this._overlayScrollEvents = [
+                'touchstart',
                 'scroll'
-            ]
+            ];
         }
 
         /**
@@ -190,24 +163,8 @@ export const OverlayMixin = (base) => {
                     });
                 };
 
-                // handle click capture phase and schedule the hide if _holdEventInside is true
-                this._onCaptureOverlayClickEvent = (e) => {
-                    setTimeout(() => {
-                        if (!this._holdEventInside) {
-                            this.hide();
-                        }
-                    });
-                };
-
-                // handle hold phase and update _holdEventInside value
-                this._onCaptureOverlayHoldEvent = (e) => {
-                    setTimeout(() => {
-                        this._holdEventInside = wasClickInside === true || this.isElementAllowed(this, e)
-                    });
-                };
-
-                // handle scroll capture phase and schedule the hide if needed
-                this._onCaptureOverlayScrollEvent = (e) => {
+                // handle capture phase and schedule the hide if needed
+                this._onCaptureOverlayActionEvent = (e) => {
                     setTimeout(() => {
                         if (wasClickInside === false && !this.isElementAllowed(this, e)) {
                             this.hide();
@@ -222,40 +179,19 @@ export const OverlayMixin = (base) => {
         handleOverlayListeners(show) {
             const addOrRemoveListener = show ? 'addEventListener' : 'removeEventListener';
 
-            // add/remove listeners for events which trigger overlay hide (mouseup, touchend)
-            this.updateClickEventListeners(addOrRemoveListener);
-
-            // add/remove listeners for hold events (mousedown, touchstart)
-            this.updateHoldEventListeners(addOrRemoveListener);
-
             // add/remove listeners for scroll events which trigger overlay hide
-            this.updateScrollEventListeners(addOrRemoveListener);
+            this.updateActionEventListeners(addOrRemoveListener);
 
             this._listenersAttached = show;
         }
 
-        updateClickEventListeners(addOrRemoveListener) {
-            this._overlayClickEvents.forEach((eventName) => {
-                document.documentElement[addOrRemoveListener](eventName, this._onCaptureOverlayClickEvent, true);
-            });
-        }
-
-        updateHoldEventListeners(addOrRemoveListener) {
-            this._overlayHoldEvents.forEach((eventName) => {
+        updateActionEventListeners(addOrRemoveListener) {
+            this._overlayActionEvents.forEach((eventName) => {
                 this[addOrRemoveListener](eventName, this._preventCloseOnOutsideEvent, true);
 
-                document.documentElement[addOrRemoveListener](eventName, this._onCaptureOverlayHoldEvent, true);
+                document.documentElement[addOrRemoveListener](eventName, this._onCaptureOverlayActionEvent, true);
             });
         }
-
-        updateScrollEventListeners(addOrRemoveListener) {
-            this._overlayScrollEvents.forEach((eventName) => {
-                this[addOrRemoveListener](eventName, this._preventCloseOnOutsideEvent, true);
-
-                document.documentElement[addOrRemoveListener](eventName, this._onCaptureOverlayScrollEvent, true);
-            });
-        }
-
 
         /**
          * add listeners for escape key press
